@@ -26,38 +26,20 @@ def updated() {
 
 def initialize() {
     subscribe(location, "routineExecuted", routineChanged)
-    subscribe(location, "sunriseTime", sunriseTimeChanged)
-	subscribe(location, "sunsetTime", sunsetTimeChanged)
-    
-	setSunriseTimeWithOffset(location.currentValue("sunriseTime"))
-	setSunsetTimeWithOffset(location.currentValue("sunsetTime"))
-}
-
-def sunriseTimeChanged(evt) {
-	setSunriseTimeWithOffset(evt.value)
-}
-
-def setSunriseTimeWithOffset(timeString) {
-    log.debug "sunriseTime: $timeString"
-	def time = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timeString)
-	state.sunriseTimeWithOffset = time.time + (offset * 60 * 1000)
-}
-
-def sunsetTimeChanged(evt) {
-	setSunsetTimeWithOffset(evt.value)
-}
-
-def setSunsetTimeWithOffset(timeString) {
-    log.debug "sunsetTime: $timeString"
-	def time = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timeString)
-	state.sunsetTimeWithOffset = time.time - (offset * 60 * 1000)
 }
 
 def isDark() {
-	def time = now()
-	def result = time < state.sunriseTimeWithOffset && state.sunriseTimeWithOffset < state.sunsetTimeWithOffset
-	log.debug "isDark = $result"
-	result
+    def time = now()
+    log.debug "now: " + time
+    
+    def times = getSunriseAndSunset()
+    log.debug "times: ${times}"
+    log.debug "sunrise: ${times.sunrise}, ${times.sunrise.time}"
+    log.debug "sunset: ${times.sunset}, ${times.sunset.time}"
+    
+    def result = time < times.sunrise.time || time > times.sunset.time
+    log.debug "isDark = $result"
+    result
 }
 
 def routineChanged(evt) {
