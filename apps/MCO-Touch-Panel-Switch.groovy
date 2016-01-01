@@ -1,8 +1,8 @@
 definition(
-	name: "MCO 2 Button Switch",
+	name: "MCO Touch Panel Switch",
 	namespace: "petermajor",
 	author: "Peter Major",
-	description: "App to sync the endpoints on the MCO 2 Button Switch with 2 switches",
+	description: "App to sync the endpoints on the MCO Touch Panel Switch with devices",
 	category: "My Apps",
 	iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
 	iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
