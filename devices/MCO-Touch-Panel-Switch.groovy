@@ -12,15 +12,18 @@
  *
  */
 metadata {
-    definition (name: "MCO 2 Button Switch", namespace: "petermajor", author: "Peter Major") {
+    definition (name: "MCO Touch Panel Switch", namespace: "petermajor", author: "Peter Major") {
         capability "Actuator"
         capability "Switch"
-        capability "Refresh"
-        capability "Polling"
+        //capability "Refresh"
+        //capability "Polling"
         capability "Configuration"
         capability "Zw Multichannel"
 
-        fingerprint deviceId:"0x1001", inClusters: "0x20 0x25 0x27 0x60 0x72 0x85 0x86 0x8E 0xEF"
+        command "report"
+
+        fingerprint deviceId:"0x1001", inClusters: "0x25 0x27 0x85 0x60 0x8E 0x72 0x86", outClusters: "0x20 0x60"
+        fingerprint deviceId:"0x1001", inClusters: "0x25 0x27 0x85 0x60 0x8E 0x72 0x86 0x70", outClusters: "0x20 0x60"
     }
 
     simulator {
@@ -30,21 +33,15 @@ metadata {
 
     tiles {
         standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-            state "on", label: '${name}', action: "switch.off", icon: "st.unknown.zwave.device", backgroundColor: "#79b821"
-            state "off", label: '${name}', action: "switch.on", icon: "st.unknown.zwave.device", backgroundColor: "#ffffff"
+            state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
+            state "off", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
         }
-        standardTile("switchOn", "device.switch", inactiveLabel: false, decoration: "flat") {
-            state "on", label:'on', action:"switch.on", icon:"st.switches.switch.on"
-        }
-        standardTile("switchOff", "device.switch", inactiveLabel: false, decoration: "flat") {
-            state "off", label:'off', action:"switch.off", icon:"st.switches.switch.off"
-        }
-        standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
-            state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
-        }
+//        standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
+//            state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
+//        }
 
         main "switch"
-        details (["switch", "switchOn", "switchOff", "refresh"])
+        details (["switch"])
     }
 }
 
@@ -85,51 +82,69 @@ def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap 
     }
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv1.ManufacturerSpecificReport cmd) {
+    log.debug("ManufacturerSpecificReport ${cmd.inspect()}")
+}
+
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
     log.debug "MCO2-zwaveEvent-Command {$cmd}"
     createEvent(descriptionText: "$device.displayName: $cmd", isStateChange: true)
 }
 
+def report() {
+    zwave.manufacturerSpecificV1.manufacturerSpecificGet().format()
+}
+
 def on() {
-    log.debug "MCO2-on"
-    commands([zwave.basicV1.basicSet(value: 0xFF), zwave.basicV1.basicGet()])
+    log.debug "MCO2-on all"
+    zwave.switchAllV1.switchAllOn().format()
 }
 
 def on(endpoint) {
     log.debug "MCO2-on $endpoint"
-    encap(zwave.basicV1.basicSet(value: 0xFF), endpoint)
+    encap(zwave.basicV1.basicSet(value: 0xFF), endpoint).format()
 }
 
 def off() {
-    log.debug "MCO2-off"
-    commands([zwave.basicV1.basicSet(value: 0x00), zwave.basicV1.basicGet()])
+    log.debug "MCO2-off all"
+    zwave.switchAllV1.switchAllOff().format()
 }
 
 def off(endpoint) {
     log.debug "MCO2-off $endpoint"
-    encap(zwave.basicV1.basicSet(value: 0x00), endpoint)
+    encap(zwave.basicV1.basicSet(value: 0x00), endpoint).format()
 }
 
-def refresh() {
-    log.debug "MCO2-refresh"
-    commands([
-        encap(zwave.basicV1.basicGet(), 1),
-        encap(zwave.basicV1.basicGet(), 2),
-        zwave.basicV1.basicGet()
-    ])
-}
+// switch returns an empty payload on encapsulated gets
+// so parse fails - currently not able to query state :-(
+//def refresh() {
+//    log.debug "MCO2-refresh"
+//
+//    def cmds = []
+//    //cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 1).format()
+//    cmds << encap(zwave.basicV1.basicGet(), 1).format()
+//    //cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 2).format()
+//    cmds << encap(zwave.basicV1.basicGet(), 2).format()
+//    delayBetween(cmds, 1000)
+//}
 
-def poll(){
-    refresh()
-}
+//def poll(){
+//    refresh()
+//}
 
 def configure() {
     log.debug "MCO2-configure"
+    
+    // currently hard-coded to two button switch
     enableEpEvents("1,2")
-    commands([
-        //zwave.multiChannelAssociationV2.multiChannelAssociationGet(groupingIdentifier:3),
-        zwave.multiChannelAssociationV2.multiChannelAssociationSet(groupingIdentifier:3, nodeId:zwaveHubNodeId)
-    ], 800)
+
+    // not sure the association is needed
+    // documentation says last group is automatically associated
+    // with controller node id by default, will test
+    //commands([
+    //    //zwave.multiChannelAssociationV2.multiChannelAssociationGet(groupingIdentifier:3),
+    //    zwave.multiChannelAssociationV2.multiChannelAssociationSet(groupingIdentifier:3, nodeId:zwaveHubNodeId)
+    //], 800)
 }
 
 def enableEpEvents(enabledEndpoints) {
@@ -138,19 +153,7 @@ def enableEpEvents(enabledEndpoints) {
     null
 }
 
-private command(physicalgraph.zwave.Command cmd) {
-    cmd.format()
-}
-
-private commands(commands, delay=200) {
-    delayBetween(commands.collect{ command(it) }, delay)
-}
-
 private encap(cmd, endpoint) {
     log.debug "MCO2-encap $endpoint {$cmd}"
-    if (endpoint) {
-        command(zwave.multiChannelV3.multiChannelCmdEncap(destinationEndPoint:endpoint).encapsulate(cmd))
-    } else {
-        command(cmd)
-    }
+    zwave.multiChannelV3.multiChannelCmdEncap(sourceEndPoint:endpoint, destinationEndPoint:endpoint).encapsulate(cmd)
 }
