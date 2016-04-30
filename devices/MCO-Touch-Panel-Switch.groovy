@@ -15,8 +15,8 @@ metadata {
     definition (name: "MCO Touch Panel Switch", namespace: "petermajor", author: "Peter Major") {
         capability "Actuator"
         capability "Switch"
-        //capability "Refresh"
-        //capability "Polling"
+        capability "Refresh"
+        capability "Polling"
         capability "Configuration"
         capability "Zw Multichannel"
 
@@ -36,12 +36,12 @@ metadata {
             state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
             state "off", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
         }
-//        standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
-//            state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
-//        }
+        standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
+            state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
+        }
 
         main "switch"
-        details (["switch"])
+        details (["switch", "refresh"])
     }
 }
 
@@ -115,36 +115,32 @@ def off(endpoint) {
     encap(zwave.basicV1.basicSet(value: 0x00), endpoint).format()
 }
 
-// switch returns an empty payload on encapsulated gets
-// so parse fails - currently not able to query state :-(
-//def refresh() {
-//    log.debug "MCO2-refresh"
-//
-//    def cmds = []
-//    //cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 1).format()
-//    cmds << encap(zwave.basicV1.basicGet(), 1).format()
-//    //cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 2).format()
-//    cmds << encap(zwave.basicV1.basicGet(), 2).format()
-//    delayBetween(cmds, 1000)
-//}
+def refresh() {
+    log.debug "MCO2-refresh"
 
-//def poll(){
-//    refresh()
-//}
+    def cmds = []
+    cmds << encap(zwave.basicV1.basicGet(), 1).format()
+    cmds << encap(zwave.basicV1.basicGet(), 2).format()
+        
+    log.debug "MCO2-refresh-cmds {$cmds}"
+    delayBetween(cmds, 1000)
+}
 
+def poll(){
+    refresh()
+}
+
+// currently hard-coded to two button switch
 def configure() {
     log.debug "MCO2-configure"
     
-    // currently hard-coded to two button switch
     enableEpEvents("1,2")
 
-    // not sure the association is needed
-    // documentation says last group is automatically associated
-    // with controller node id by default, will test
-    //commands([
-    //    //zwave.multiChannelAssociationV2.multiChannelAssociationGet(groupingIdentifier:3),
-    //    zwave.multiChannelAssociationV2.multiChannelAssociationSet(groupingIdentifier:3, nodeId:zwaveHubNodeId)
-    //], 800)
+    delayBetween([
+        zwave.associationV1.associationSet(groupingIdentifier: 1, nodeId: zwaveHubNodeId).format(),
+        zwave.associationV1.associationSet(groupingIdentifier: 2, nodeId: zwaveHubNodeId).format(),
+        zwave.associationV1.associationSet(groupingIdentifier: 3, nodeId: zwaveHubNodeId).format()
+    ])
 }
 
 def enableEpEvents(enabledEndpoints) {
