@@ -65,7 +65,7 @@ def onHandler(evt) {
 }
 
 def offHandler(evt) {
-	def endpoint = (evt.deviceId == switch2.id) ? 2 : 1
+	def endpoint = getEndpoint(evt.deviceId)
 	master.off(endpoint)
 }
 
