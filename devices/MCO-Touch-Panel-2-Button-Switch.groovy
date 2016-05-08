@@ -12,7 +12,7 @@
  *
  */
 metadata {
-    definition (name: "MCO Touch Panel Switch", namespace: "petermajor", author: "Peter Major") {
+    definition (name: "MCO Touch Panel 2 Button Switch", namespace: "petermajor", author: "Peter Major") {
         capability "Actuator"
         capability "Switch"
         capability "Refresh"
