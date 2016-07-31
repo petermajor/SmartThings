@@ -45,7 +45,7 @@ metadata {
 }
 
 def parse(String description) {
-    log.debug "MCO2-parse {$description}"
+    log.debug "S412-parse {$description}"
     def result = null
     if (description.startsWith("Err")) {
         result = createEvent(descriptionText:description, isStateChange:true)
@@ -60,7 +60,7 @@ def parse(String description) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-    log.debug "MCO2-zwaveEvent-BasicReport {$cmd}"
+    log.debug "S412-zwaveEvent-BasicReport {$cmd}"
     if (cmd.value == 0) {
         createEvent(name: "switch", value: "off")
     } else if (cmd.value == 255) {
@@ -69,7 +69,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
-    log.debug "MCO2-zwaveEvent-MultiChannelCmdEncap {$cmd}"
+    log.debug "S412-zwaveEvent-MultiChannelCmdEncap {$cmd}"
     def encapsulatedCommand = cmd.encapsulatedCommand([0x25: 1, 0x20: 1])
     if (encapsulatedCommand) {
         if (state.enabledEndpoints.find { it == cmd.sourceEndPoint }) {
@@ -86,7 +86,7 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv1.ManufacturerS
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
-    log.debug "MCO2-zwaveEvent-Command {$cmd}"
+    log.debug "S412-zwaveEvent-Command {$cmd}"
     createEvent(descriptionText: "$device.displayName: $cmd", isStateChange: true)
 }
 
@@ -95,33 +95,33 @@ def report() {
 }
 
 def on() {
-    log.debug "MCO2-on all"
+    log.debug "S412-on all"
     zwave.switchAllV1.switchAllOn().format()
 }
 
 def on(endpoint) {
-    log.debug "MCO2-on $endpoint"
+    log.debug "S412-on $endpoint"
     encap(zwave.basicV1.basicSet(value: 0xFF), endpoint).format()
 }
 
 def off() {
-    log.debug "MCO2-off all"
+    log.debug "S412-off all"
     zwave.switchAllV1.switchAllOff().format()
 }
 
 def off(endpoint) {
-    log.debug "MCO2-off $endpoint"
+    log.debug "S412-off $endpoint"
     encap(zwave.basicV1.basicSet(value: 0x00), endpoint).format()
 }
 
 def refresh() {
-    log.debug "MCO2-refresh"
+    log.debug "S412-refresh"
 
     def cmds = []
     cmds << encap(zwave.basicV1.basicGet(), 1).format()
     cmds << encap(zwave.basicV1.basicGet(), 2).format()
         
-    log.debug "MCO2-refresh-cmds {$cmds}"
+    log.debug "S412-refresh-cmds {$cmds}"
     delayBetween(cmds, 1000)
 }
 
@@ -131,7 +131,7 @@ def poll(){
 
 // currently hard-coded to two button switch
 def configure() {
-    log.debug "MCO2-configure"
+    log.debug "S412-configure"
     
     enableEpEvents("1,2")
 
@@ -143,12 +143,12 @@ def configure() {
 }
 
 def enableEpEvents(enabledEndpoints) {
-    log.debug "MCO2-enabledEndpoints"
+    log.debug "S412-enabledEndpoints"
     state.enabledEndpoints = enabledEndpoints.split(",").findAll()*.toInteger()
     null
 }
 
 private encap(cmd, endpoint) {
-    log.debug "MCO2-encap $endpoint {$cmd}"
+    log.debug "S412-encap $endpoint {$cmd}"
     zwave.multiChannelV3.multiChannelCmdEncap(sourceEndPoint:endpoint, destinationEndPoint:endpoint).encapsulate(cmd)
 }
