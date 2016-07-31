@@ -12,7 +12,7 @@
  *
  */
 metadata {
-    definition (name: "MCO Touch Panel 2 Button Switch", namespace: "petermajor", author: "Peter Major") {
+    definition (name: "MCO Touch Panel S412-EU", namespace: "petermajor", author: "Peter Major") {
         capability "Actuator"
         capability "Switch"
         capability "Refresh"
@@ -22,8 +22,7 @@ metadata {
 
         command "report"
 
-        fingerprint deviceId:"0x1001", inClusters: "0x25 0x27 0x85 0x60 0x8E 0x72 0x86", outClusters: "0x20 0x60"
-        fingerprint deviceId:"0x1001", inClusters: "0x25 0x27 0x85 0x60 0x8E 0x72 0x86 0x70", outClusters: "0x20 0x60"
+        fingerprint mfr: "015F", prod: "4121", model: "1302"
     }
 
     simulator {
