@@ -46,6 +46,8 @@ def initialize()
 }
 
 def endpointEvent(evt) {
+    log.debug "MCOAPP-endpointEvent $evt"
+
 	def values = evt.value.split(":")
 	def endpoint = values[0]
 	def payload = values[1]
@@ -53,18 +55,24 @@ def endpointEvent(evt) {
 	def theswitch = getSwitch(endpoint)
 
 	if (payload == "200300"){
+    	log.debug "MCOAPP-endpointEvent-turning switch off"
 		theswitch.off();
 	} else if (payload == "2003FF"){
+    	log.debug "MCOAPP-endpointEvent-turning switch on"
 		theswitch.on();
+	} else {
+    	log.debug "MCOAPP-endpointEvent-unexpected payload"
 	}
 }
 
 def onHandler(evt) {
+    log.debug "MCOAPP-onHandler $evt"
 	def endpoint = getEndpoint(evt.deviceId)
 	master.on(endpoint)
 }
 
 def offHandler(evt) {
+    log.debug "MCOAPP-offHandler $evt"
 	def endpoint = getEndpoint(evt.deviceId)
 	master.off(endpoint)
 }
