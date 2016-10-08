@@ -43,19 +43,13 @@ def isDark() {
 }
 
 def routineChanged(evt) {
-    log.debug "routineChanged: $evt"
+    log.debug "routineChanged: ${evt}"
 
-    // name will be "routineExecuted"
-    log.debug "evt name: ${evt.name}"
-
-    // value will be the ID of the SmartApp that created this event
-    log.debug "evt value: ${evt.value}"
-
-    // descriptionText will be the name of the routine
+    // displayName will be the name of the routine
     // e.g., "I'm Back!" or "Goodbye!"
-    log.debug "evt descriptionText: ${evt.descriptionText}"
+    log.debug "evt displayName: ${evt.displayName}"
     
-    if(evt.descriptionText == "Good Morning! was executed") {
+    if(evt.displayName == "Good Morning!") {
         if(isDark()) {
             log.debug "turning lights on"
             switches.on()
