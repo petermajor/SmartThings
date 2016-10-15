@@ -56,9 +56,12 @@ def modeChanged(evt) {
     log.debug "new mode: ${evt.value}"
     
     if(evt.value == "Home" && state.lastMode == "Away") {
+        log.debug "Mode changed from Away to Home. Checking if it's dark..."
         if(isDark()) {
             log.debug "turning lights on"
             switches.on()
         }
     }
+    
+    state.lastMode = evt.value
 }
