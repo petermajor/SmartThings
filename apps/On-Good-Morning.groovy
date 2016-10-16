@@ -1,5 +1,5 @@
 definition(
-    name: "Turn on lights on Good Morning!",
+    name: "On Good Morning!",
     namespace: "petermajor",
     author: "Peter Major",
     description: "Turn on lights when Good Morning! routine is activated, but only if it's before sunrise.",
@@ -11,7 +11,6 @@ definition(
 preferences {
     section("Lights") {
         input "switches", "capability.switch", title: "Which lights to turn on?", required: true, multiple: true
-        input "offset", "number", title: "Sunrise offset"
     }
 }
 
