@@ -63,6 +63,8 @@ def onModeChanged(evt) {
             log.debug "... it's dark, turning on outside lights"
             outsideLights.on()
         }
+
+        unschedule(onFiveMinsAfterModeChangedToHome)
     }
 
     if(evt.value == "Home" && state.lastMode == "Away") {
