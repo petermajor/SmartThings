@@ -23,6 +23,7 @@ metadata {
         command "report"
 
         fingerprint mfr: "015F", prod: "4102", model: "0201"
+        fingerprint mfr: "015F", prod: "4111", model: "1302"
     }
 
     simulator {
