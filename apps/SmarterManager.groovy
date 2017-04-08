@@ -26,9 +26,10 @@ definition(
 
 
 preferences {
-	page(name: "searchTargetSelection", title: "iBrew Server", nextPage: "deviceDiscovery") {
-		section("Search Target") {
-			input "searchTarget", "string", title: "Network Name / Address", defaultValue: "192.168.1.14:2080", required: true
+	page(name: "ibrew", title: "iBrew Server", nextPage: "deviceDiscovery") {
+		section("iBrew") {
+			input "ibrewAddress", "string", title: "Address", defaultValue: "192.168.1.14", required: true
+			input "ibrewPort", "string", title: "Port", defaultValue: "2080", required: true
 		}
 	}
 	page(name: "deviceDiscovery", title: "Device Discovery", content: "deviceDiscovery")
@@ -48,9 +49,9 @@ def deviceDiscovery() {
 	} else {
 
 		devices.each {
-			def value = "${it.value.type.description}"
-			def key = it.value.mac
-			options["${key}"] = value
+			def value = it.value.type?.description
+			def key = formatMac(it.value.mac)
+			options["$key"] = value
 		}
 
 		return dynamicPage(name: "deviceDiscovery", title: "Discovery Finished", nextPage: "", install: true, uninstall: true) {
@@ -63,13 +64,25 @@ def deviceDiscovery() {
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
+
+	initialize()
 }
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
+
+	initialize()
 }
 
 def initialize() {
+
+	//unschedule()
+
+	if (selectedDevices) {
+		addDevices()
+	}
+	// TODO look for device changes - like ip address
+	// runEvery5Minutes("ssdpDiscover")
 }
 
 def getDevices() {
@@ -84,7 +97,7 @@ def discoverDevices() {
  	log.debug "discoverDevices"
 
 	try {
-		def action = new physicalgraph.device.HubAction("""GET /api/appliances HTTP/1.1\r\nHOST: $searchTarget\r\n\r\n""", physicalgraph.device.Protocol.LAN, searchTarget, [callback: discoverDevicesCallback]);
+		def action = new physicalgraph.device.HubAction("""GET /api/appliances HTTP/1.1\r\nHOST: $ibrewAddress:$ibrewPort\r\n\r\n""", physicalgraph.device.Protocol.LAN, "$ibrewAddress:$ibrewPort", [callback: discoverDevicesCallback]);
  		log.debug "action {$action}"
 		sendHubCommand(action)
 	}
@@ -100,12 +113,61 @@ void discoverDevicesCallback(physicalgraph.device.HubResponse hubResponse) {
 	def body = hubResponse.json
  	log.debug "body {$hubResponse.json}"
 
+	state.ibrewMac = hubResponse.mac
+
 	def devices = getDevices()
 
 	body.values().each {
-		if (!devices."${it?.mac}")
-			devices << ["${it?.mac}": it]
+		def mac = formatMac(it.mac)
+		if (devices["$mac"]) {
+ 			def child = getChildDevice(mac)
+			if (child) {
+				log.debug "device known $mac, syncing..."
+
+				// TODO
+				// child.sync(mac, it?.ip)
+			}
+
+		} else {
+ 			log.debug "device not known $mac, adding..."
+			devices << ["$mac" : it]
+		}
 	}
 
  	log.debug "discoverDevicesCallback {$devices}"
+}
+
+def addDevices() {
+	def devices = getDevices()
+
+	selectedDevices.each { dni ->
+		def selectedDevice = devices["$dni"]
+		def d
+		if (selectedDevice) {
+			d = getChildDevices()?.find {
+				it.deviceNetworkId == dni
+			}
+		}
+
+		// TODO
+		// iKettle?
+		if (!d && selectedDevice.type?.id == 2) {
+			log.debug "Creating device with dni: $dni"
+			addChildDevice("petermajor", "SmarterCoffee", dni, null, [
+				"name": selectedDevice.type?.description,
+				"label": selectedDevice.type?.description,
+				"data": [
+					"ibrewAddress": ibrewAddress,
+					"ibrewPort": ibrewPort,
+					"ibrewMac": state.ibrewMac,
+					"deviceAddress": selectedDevice.ip,
+					"dni": dni
+				]
+			])
+		}
+	}
+}
+
+private String formatMac(mac) {
+	return mac.replace(":", "").toUpperCase()
 }
