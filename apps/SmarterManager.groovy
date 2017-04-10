@@ -13,7 +13,6 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
-import groovy.json.JsonSlurper
 
 definition(
 		name: "SmarterManager",
@@ -76,13 +75,13 @@ def updated() {
 
 def initialize() {
 
-	//unschedule()
+	unschedule()
 
 	if (selectedDevices) {
 		addDevices()
 	}
-	// TODO look for device changes - like ip address
-	// runEvery5Minutes("ssdpDiscover")
+	// look for device ip address change
+	runEvery5Minutes("discoverDevices")
 }
 
 def getDevices() {
@@ -110,6 +109,8 @@ void discoverDevicesCallback(physicalgraph.device.HubResponse hubResponse) {
 
  	log.debug "discoverDevicesCallback {$hubResponse}"
 
+ 	if (hubResponse.status != 200) return
+
 	def body = hubResponse.json
  	log.debug "body {$hubResponse.json}"
 
@@ -122,10 +123,7 @@ void discoverDevicesCallback(physicalgraph.device.HubResponse hubResponse) {
 		if (devices["$mac"]) {
  			def child = getChildDevice(mac)
 			if (child) {
-				log.debug "device known $mac, syncing..."
-
-				// TODO
-				// child.sync(mac, it?.ip)
+				child.sync(ibrewAddress, ibrewPort, state.ibrewMac, it.ip)
 			}
 
 		} else {
@@ -152,22 +150,30 @@ def addDevices() {
 		// TODO
 		// iKettle?
 		if (!d && selectedDevice.type?.id == 2) {
-			log.debug "Creating device with dni: $dni"
-			addChildDevice("petermajor", "SmarterCoffee", dni, null, [
+			def hubId = getHubId()
+			log.debug "Creating device with dni: $dni in hub: $hubId"
+			addChildDevice("petermajor", "SmarterCoffee", dni, hubId, [
 				"name": selectedDevice.type?.description,
 				"label": selectedDevice.type?.description,
 				"data": [
 					"ibrewAddress": ibrewAddress,
 					"ibrewPort": ibrewPort,
 					"ibrewMac": state.ibrewMac,
-					"deviceAddress": selectedDevice.ip,
-					"dni": dni
+					"deviceAddress": selectedDevice.ip
 				]
 			])
 		}
 	}
 }
 
-private String formatMac(mac) {
+def formatMac(mac) {
 	return mac.replace(":", "").toUpperCase()
+}
+
+// TODO support multiple hubs
+// https://community.smartthings.com/t/how-to-get-smartthings-hubs-id/21195/42
+def getHubId() {
+	def hubs = location.hubs.findAll{ it.type == physicalgraph.device.HubType.PHYSICAL } 
+    //log.debug "hub count: ${hubs.size()}"
+	return hubs[0].id 
 }

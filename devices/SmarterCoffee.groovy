@@ -1,5 +1,3 @@
-import groovy.json.JsonSlurper
-
 metadata {
 	definition (name: "SmarterCoffee", namespace: "petermajor", author: "Peter Major") {
 		capability "Actuator"
@@ -9,7 +7,7 @@ metadata {
     //	capability 	"Sensor"
     //	capability 	"Temperature Measurement"
         
-	//	command "refresh"
+	command "refresh"
     //	command "subscribe"
 
 	//	attribute "network","string"
@@ -38,9 +36,9 @@ metadata {
 		//	state "offline", label:'${name}', icon:"st.Home.home30", backgroundColor:"#ff0000"
 		}
 
-    //	standardTile("refresh", "device.switch", inactiveLabel: false, height: 1, width: 1, decoration: "flat") {
-    //		state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
-    //	}
+		standardTile("refresh", "device.switch", inactiveLabel: false, height: 1, width: 1, decoration: "flat") {
+			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
+		}
         
     //	standardTile("subscribe", "device.switch", inactiveLabel: false, height: 1, width: 1, decoration: "flat") {
     //		state "default", label:"", action:"subscribe", icon:"st.Appliances.appliances3"
@@ -51,12 +49,13 @@ metadata {
     //	}
 
         main "switch"
+        details (["switch", "refresh"])
 	}
 }
 
-def parse(String description) {
+def parse(description) {
 
- 	log.debug "SmarterCoffee Parse {description}"
+ 	log.debug "SmarterCoffee Parse ${description}"
 
 // 	def map
 // 	def headerString
@@ -123,15 +122,23 @@ def parse(String description) {
 
 // handle commands
 
-// def installed() {
-// 	log.debug "Installed with settings: ${settings}"
-// 	initialize()
-// }
+def installed() {
+	// if (!device.deviceNetworkId)
+	// 	device.deviceNetworkId = "testing123"
 
-// def updated() {
-// 	log.debug "Updated with settings: ${settings}"
-// 	initialize()
-// }
+	// sync("192.168.1.14", "2080", null, "192.168.1.15")
+	// log.debug "Installed: ${device.deviceNetworkId}"
+	//initialize()
+}
+
+def updated() {
+	// if (!device.deviceNetworkId)
+	// 	device.deviceNetworkId = "testing123"
+
+	// sync("192.168.1.14", "2080", null, "192.168.1.15")
+	// log.debug "Update: ${device.deviceNetworkId}"
+	//initialize()
+}
 
 // def initialize() {
 // 	log.info "iBrew ${textVersion()} ${textCopyright()}"
@@ -152,6 +159,7 @@ def off() {
 
 def poll() {
 	log.debug "SmarterCoffee Poll"
+	getStatus()
     
 // 	if (device.deviceNetworkId != null) {
 // 		api('refresh')
@@ -165,8 +173,87 @@ def poll() {
 
 def refresh() {
 	log.debug "SmarterCoffee Refresh"
-// 	ipSetup()
-// 	api('refresh')
+	getStatus()
+}
+
+def getStatus() {
+	def dni = device.deviceNetworkId
+	def path = getDevicePath("status")
+	def host = getHostAddress()
+	def action = new physicalgraph.device.HubAction(
+		"""GET $path HTTP/1.1\r\nHOST: $host\r\n\r\n""", 
+		physicalgraph.device.Protocol.LAN, 
+		"$dni", 
+		[callback: getStatusCallback]);
+	// def action = new physicalgraph.device.HubAction(
+	// 	method: "GET",
+	// 	path: getDevicePath("status"),
+	// 	headers: [
+	// 		HOST: getHostAddress(), 
+	// 		Accept: "application/json"
+	// 	]
+	// )
+	// def p = [
+	// 	method: "GET",
+	// 	path: getDevicePath("status"),
+	// 	headers: [
+	// 		HOST: getHostAddress(), 
+	// 		Accept: "application/json"
+	// 	]
+	// ]
+	// def action = new physicalgraph.device.HubAction(
+	// 	params: p,
+	// 	dni: device.deviceNetworkId
+	// )
+	log.debug "SmarterCoffee getStatusAction ${action}"
+	return action
+}
+
+void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
+
+	log.debug "getStatusCallback {$hubResponse}"
+
+	if (hubResponse.status != 200) return
+
+	def body = hubResponse.json
+
+	if (body?.status?.working) {
+		sendEvent(name: "switch", value: "on", displayed: false)
+	} else {
+		sendEvent(name: "switch", value: "off", displayed: false)
+	}
+}
+
+def sync(ibrewAddress, ibrewPort, ibrewMac, deviceAddress) {
+	log.debug "SmarterCoffee Sync $ibrewAddress $ibrewPort $ibrewMac $deviceAddress"
+
+	def ibrewAddressOld = getDataValue("ibrewAddress")
+	if (ibrewAddress && ibrewAddress != ibrewAddressOld) {
+		updateDataValue("ibrewAddress", ibrewAddress)
+	}
+	def ibrewPortOld = getDataValue("ibrewPort")
+	if (ibrewPort && ibrewPort != ibrewPortOld) {
+		updateDataValue("ibrewPort", ibrewPort)
+	}
+	def ibrewMacOld = getDataValue("ibrewMac")
+	if (ibrewMac && ibrewMac != ibrewMacOld) {
+		updateDataValue("ibrewMac", ibrewMac)
+	}
+	def deviceAddressOld = getDataValue("deviceAddress")
+	if (deviceAddress && deviceAddress != deviceAddressOld) {
+		updateDataValue("deviceAddress", deviceAddress)
+	}
+}
+
+private String getHostAddress() {
+	def ibrewAddress = getDataValue("ibrewAddress")
+	def ibrewPort = getDataValue("ibrewPort")
+	return "$ibrewAddress:$ibrewPort"
+}
+
+private String getDevicePath(path) {
+	def deviceAddress = getDataValue("deviceAddress")
+	return "/api/$deviceAddress/$path"
 }
 
 // def subscribe (){
@@ -174,8 +261,6 @@ def refresh() {
 // 	ipSetup()
 // 	subscribeAction()
 // }
-
-
 
 // def api(String APICommand, success = {}) {
 // 	def APIPath
@@ -263,6 +348,8 @@ def refresh() {
 // private delayAction(long time) {
 // 	new physicalgraph.device.HubAction("delay $time")
 // }
+
+
 
 // private def textVersion() {
 // 	def text = "Version 0.2"
