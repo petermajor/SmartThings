@@ -25,12 +25,6 @@ definition(
 
 
 preferences {
-	page(name: "ibrew", title: "iBrew Server", nextPage: "deviceDiscovery") {
-		section("iBrew") {
-			input "ibrewAddress", "string", title: "Address", defaultValue: "192.168.1.14", required: true
-			input "ibrewPort", "string", title: "Port", defaultValue: "2080", required: true
-		}
-	}
 	page(name: "deviceDiscovery", title: "Device Discovery", content: "deviceDiscovery")
 }
 
@@ -40,7 +34,9 @@ def deviceDiscovery() {
 	def options = [:]
 
 	if (!devices) {
-		discoverDevices()
+
+		ssdpSubscribe()
+		ssdpDiscover()
 
 		return dynamicPage(name: "deviceDiscovery", title: "Discovery Started...", nextPage: "", refreshInterval: 5, install: true, uninstall: true) {
 		}
@@ -48,8 +44,8 @@ def deviceDiscovery() {
 	} else {
 
 		devices.each {
-			def value = it.value.type?.description
-			def key = formatMac(it.value.mac)
+			def value = it.value.name
+			def key = it.key
 			options["$key"] = value
 		}
 
@@ -75,13 +71,64 @@ def updated() {
 
 def initialize() {
 
+	unsubscribe()
 	unschedule()
+
+	ssdpSubscribe()
 
 	if (selectedDevices) {
 		addDevices()
 	}
-	// look for device ip address change
-	runEvery5Minutes("discoverDevices")
+
+	// check devices for ip change
+	runEvery5Minutes("ssdpDiscover")
+}
+
+void ssdpSubscribe() {
+	log.debug "Subscribed to discovery response"
+	subscribe(location, "ssdpTerm.urn:schemas-upnp-org:device:SmartThingsSmarterCoffee:1", ssdpHandler)
+}
+
+void ssdpDiscover() {
+	log.debug "Sending discovery request"
+	sendHubCommand(new physicalgraph.device.HubAction("lan discovery urn:schemas-upnp-org:device:SmartThingsSmarterCoffee:1", physicalgraph.device.Protocol.LAN))
+}
+
+def ssdpHandler(evt) {
+
+	def description = evt.description
+	log.debug "ssdpHandler description: ${description}"
+
+	state.hubId = evt.hubId
+	log.debug "ssdpHandler hubId: ${evt.hubId}"
+
+	def parsedEvent = parseLanMessage(description)
+
+	state.serverMac = parsedEvent?.mac
+	state.serverAddress = convertHexToIP(parsedEvent?.networkAddress)
+	state.serverPort = "8080";
+
+	//parsedEvent << ["hub":state.hubId]
+	log.debug "ssdpHandler parsedEvent: ${parsedEvent}"
+
+	discoverDevices()
+
+
+	//def devices = getDevices()
+	// String ssdpUSN = parsedEvent.ssdpUSN.toString()
+	// if (devices."${ssdpUSN}") {
+	// 	def d = devices."${ssdpUSN}"
+	// 	if (d.networkAddress != parsedEvent.networkAddress || d.deviceAddress != parsedEvent.deviceAddress) {
+	// 		d.networkAddress = parsedEvent.networkAddress
+	// 		d.deviceAddress = parsedEvent.deviceAddress
+	// 		def child = getChildDevice(parsedEvent.mac)
+	// 		if (child) {
+	// 			child.sync(parsedEvent.networkAddress, parsedEvent.deviceAddress)
+	// 		}
+	// 	}
+	// } else {
+	// 	devices << ["${ssdpUSN}": parsedEvent]
+	// }
 }
 
 def getDevices() {
@@ -96,7 +143,7 @@ def discoverDevices() {
  	log.debug "discoverDevices"
 
 	try {
-		def action = new physicalgraph.device.HubAction("""GET /api/appliances HTTP/1.1\r\nHOST: $ibrewAddress:$ibrewPort\r\n\r\n""", physicalgraph.device.Protocol.LAN, "$ibrewAddress:$ibrewPort", [callback: discoverDevicesCallback]);
+		def action = new physicalgraph.device.HubAction("""GET /api/device HTTP/1.1\r\nHOST: $state.serverAddress:$state.serverPort\r\n\r\n""", physicalgraph.device.Protocol.LAN, "$state.serverAddress:$state.serverPort", [callback: discoverDevicesCallback]);
  		log.debug "action {$action}"
 		sendHubCommand(action)
 	}
@@ -114,21 +161,20 @@ void discoverDevicesCallback(physicalgraph.device.HubResponse hubResponse) {
 	def body = hubResponse.json
  	log.debug "body {$hubResponse.json}"
 
-	state.ibrewMac = hubResponse.mac
-
 	def devices = getDevices()
 
 	body.values().each {
-		def mac = formatMac(it.mac)
-		if (devices["$mac"]) {
- 			def child = getChildDevice(mac)
+		def id = it.id
+		if (devices["$id"]) {
+ 			def child = getChildDevice(id)
 			if (child) {
-				child.sync(ibrewAddress, ibrewPort, state.ibrewMac, it.ip)
+ 				log.debug "device known $id, syncing..."
+				child.sync(state.serverAddress, state.serverPort, state.serverMac, it.id)
 			}
 
 		} else {
- 			log.debug "device not known $mac, adding..."
-			devices << ["$mac" : it]
+ 			log.debug "device not known $id, adding..."
+			devices << ["$id" : it]
 		}
 	}
 
@@ -138,42 +184,35 @@ void discoverDevicesCallback(physicalgraph.device.HubResponse hubResponse) {
 def addDevices() {
 	def devices = getDevices()
 
-	selectedDevices.each { dni ->
-		def selectedDevice = devices["$dni"]
+	selectedDevices.each { id ->
+		def selectedDevice = devices["$id"]
 		def d
 		if (selectedDevice) {
 			d = getChildDevices()?.find {
-				it.deviceNetworkId == dni
+				it.deviceNetworkId == id
 			}
 		}
 
-		// TODO
-		// iKettle?
-		if (!d && selectedDevice.type?.id == 2) {
-			def hubId = getHubId()
-			log.debug "Creating device with dni: $dni in hub: $hubId"
-			addChildDevice("petermajor", "SmarterCoffee", dni, hubId, [
-				"name": selectedDevice.type?.description,
-				"label": selectedDevice.type?.description,
+		if (!d) {
+			log.debug "Creating device with dni: $id in hub: $state.hubId"
+			addChildDevice("petermajor", "SmarterCoffee", id, state.hubId, [
+				"name": selectedDevice.name,
+				"label": selectedDevice.name,
 				"data": [
-					"ibrewAddress": ibrewAddress,
-					"ibrewPort": ibrewPort,
-					"ibrewMac": state.ibrewMac,
-					"deviceAddress": selectedDevice.ip
+					"serverAddress": state.serverAddress,
+					"serverPort": state.serverPort,
+					"serverMac": state.serverMac,
+					"deviceId": id
 				]
 			])
 		}
 	}
 }
-
-def formatMac(mac) {
-	return mac.replace(":", "").toUpperCase()
+private Integer convertHexToInt(hex) {
+	Integer.parseInt(hex,16)
 }
 
-// TODO support multiple hubs
-// https://community.smartthings.com/t/how-to-get-smartthings-hubs-id/21195/42
-def getHubId() {
-	def hubs = location.hubs.findAll{ it.type == physicalgraph.device.HubType.PHYSICAL } 
-    //log.debug "hub count: ${hubs.size()}"
-	return hubs[0].id 
+private String convertHexToIP(hex) {
+	[convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
 }
+

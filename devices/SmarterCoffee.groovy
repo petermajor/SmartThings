@@ -15,10 +15,6 @@ metadata {
 	}
     
 	preferences {
-	//	input("ibrewhost", "text", title: "iBrew Host", description: "IP address or host name of the iBrew server", required: true, displayDuringSetup: true)
-	//	input("ibrewport", "number", title: "iBrew Port", description: "Port number that the iBrew server listens on (Default:2080)", defaultValue: "2080", required: true, displayDuringSetup: true)
-    //	input("mac", "text", title: "MAC Address", description: "MAC address of server")
-    //	input("kettleip", "text", title: "Kettle IP address", description: "IP address of the kettle")
 	}
 
     simulator {
@@ -148,8 +144,24 @@ def updated() {
 
 def on() {
  	log.debug "SmarterCoffee On"
-// 	ipSetup()
-// 	api('on')
+
+	def result = [startBrew()]
+	result << delayAction(2000)
+	result << getStatus()
+	result.flatten()
+}
+
+def startBrew() {
+	def dni = device.deviceNetworkId
+	def path = getDevicePath("start")
+	def host = getHostAddress()
+	def action = new physicalgraph.device.HubAction(
+		"""GET $path HTTP/1.1\r\nHOST: $host\r\n\r\n""", 
+		physicalgraph.device.Protocol.LAN, 
+		"$dni");
+
+	log.debug "SmarterCoffee startBrew ${action}"
+	return action
 }
 
 def off() {
@@ -177,83 +189,74 @@ def refresh() {
 }
 
 def getStatus() {
-	def dni = device.deviceNetworkId
-	def path = getDevicePath("status")
-	def host = getHostAddress()
-	def action = new physicalgraph.device.HubAction(
-		"""GET $path HTTP/1.1\r\nHOST: $host\r\n\r\n""", 
-		physicalgraph.device.Protocol.LAN, 
-		"$dni", 
-		[callback: getStatusCallback]);
+	// def dni = device.deviceNetworkId
+	// def path = getDevicePath("status")
+	// def host = getHostAddress()
 	// def action = new physicalgraph.device.HubAction(
-	// 	method: "GET",
-	// 	path: getDevicePath("status"),
-	// 	headers: [
-	// 		HOST: getHostAddress(), 
-	// 		Accept: "application/json"
-	// 	]
-	// )
-	// def p = [
-	// 	method: "GET",
-	// 	path: getDevicePath("status"),
-	// 	headers: [
-	// 		HOST: getHostAddress(), 
-	// 		Accept: "application/json"
-	// 	]
-	// ]
-	// def action = new physicalgraph.device.HubAction(
-	// 	params: p,
-	// 	dni: device.deviceNetworkId
-	// )
-	log.debug "SmarterCoffee getStatusAction ${action}"
-	return action
+	// 	"""GET $path HTTP/1.1\r\nHOST: $host\r\n\r\n""", 
+	// 	physicalgraph.device.Protocol.LAN, 
+	// 	"$dni", 
+	// 	[callback: getStatusCallback]);
+
+	// log.debug "SmarterCoffee getStatusAction ${action}"
+	// return action
 }
 
-void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
+// void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
 
-	log.debug "getStatusCallback {$hubResponse}"
+// 	log.debug "getStatusCallback ${hubResponse}"
 
-	if (hubResponse.status != 200) return
+// 	// TODO
+// 	if (hubResponse.status != 200) return
 
-	def body = hubResponse.json
+// 	def body = hubResponse.json
 
-	if (body?.status?.working) {
-		sendEvent(name: "switch", value: "on", displayed: false)
-	} else {
-		sendEvent(name: "switch", value: "off", displayed: false)
+// 	state.ready = body?.status?.ready
+// 	state.heater = body?.sensors?.heater
+
+// 	log.debug "state ${state}"
+
+// 	if (state.heater) {
+// 		sendEvent(name: "switch", value: "on", displayed: false)
+// 	} else {
+// 		sendEvent(name: "switch", value: "off", displayed: false)
+// 	}
+// }
+
+def sync(serverAddress, serverPort, serverMac, deviceId) {
+	log.debug "SmarterCoffee Sync $serverAddress $serverPort $serverMac $deviceId"
+
+	def serverAddressOld = getDataValue("serverAddress")
+	if (serverAddress && serverAddress != serverAddressOld) {
+		updateDataValue("serverAddress", serverAddress)
 	}
-}
-
-def sync(ibrewAddress, ibrewPort, ibrewMac, deviceAddress) {
-	log.debug "SmarterCoffee Sync $ibrewAddress $ibrewPort $ibrewMac $deviceAddress"
-
-	def ibrewAddressOld = getDataValue("ibrewAddress")
-	if (ibrewAddress && ibrewAddress != ibrewAddressOld) {
-		updateDataValue("ibrewAddress", ibrewAddress)
+	def serverPortOld = getDataValue("serverPort")
+	if (serverPort && serverPort != serverPortOld) {
+		updateDataValue("serverPort", serverPort)
 	}
-	def ibrewPortOld = getDataValue("ibrewPort")
-	if (ibrewPort && ibrewPort != ibrewPortOld) {
-		updateDataValue("ibrewPort", ibrewPort)
+	def serverMacOld = getDataValue("serverMac")
+	if (serverMac && serverMac != serverMacOld) {
+		updateDataValue("serverMac", serverMac)
 	}
-	def ibrewMacOld = getDataValue("ibrewMac")
-	if (ibrewMac && ibrewMac != ibrewMacOld) {
-		updateDataValue("ibrewMac", ibrewMac)
-	}
-	def deviceAddressOld = getDataValue("deviceAddress")
-	if (deviceAddress && deviceAddress != deviceAddressOld) {
-		updateDataValue("deviceAddress", deviceAddress)
+	def deviceIdOld = getDataValue("deviceId")
+	if (deviceId && deviceId != deviceIdOld) {
+		updateDataValue("deviceId", deviceId)
 	}
 }
 
-private String getHostAddress() {
-	def ibrewAddress = getDataValue("ibrewAddress")
-	def ibrewPort = getDataValue("ibrewPort")
-	return "$ibrewAddress:$ibrewPort"
+def getHostAddress() {
+	def serverAddress = getDataValue("serverAddress")
+	def serverPort = getDataValue("serverPort")
+	return "$serverAddress:$serverPort"
 }
 
-private String getDevicePath(path) {
-	def deviceAddress = getDataValue("deviceAddress")
-	return "/api/$deviceAddress/$path"
+def getDevicePath(path) {
+	def deviceId = getDataValue("deviceId")
+	return "/api/device/$deviceId/$path"
+}
+
+def delayAction(long time) {
+	return new physicalgraph.device.HubAction("delay $time")
 }
 
 // def subscribe (){
