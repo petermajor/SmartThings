@@ -137,7 +137,7 @@ void discoverDevicesCallback(physicalgraph.device.HubResponse hubResponse) {
 
  	def serverMac = hubResponse.mac
  	def serverAddress = convertHexToIP(hubResponse.ip)
- 	def serverPort = convertHexToInt(hubResponse.port)
+ 	def serverPort = Integer.toString(convertHexToInt(hubResponse.port))
  	def hubId = hubResponse.hubId
 
 	def body = hubResponse.json
@@ -196,6 +196,7 @@ def addDevices() {
 		}
 	}
 }
+
 private Integer convertHexToInt(hex) {
 	Integer.parseInt(hex,16)
 }
