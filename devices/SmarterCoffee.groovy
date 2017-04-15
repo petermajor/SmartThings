@@ -4,45 +4,26 @@ metadata {
 		capability "Polling"
 		capability "Refresh"
 		capability "Switch"
-    //	capability 	"Sensor"
-    //	capability 	"Temperature Measurement"
         
-	command "refresh"
-    //	command "subscribe"
-
-	//	attribute "network","string"
-	//	attribute "bin","string"
+		command "refresh"
 	}
     
 	preferences {
 	}
 
     simulator {
-    //    status "on":  '{"command": "success"}'
-    //    status "off": "command: 2003, payload: 00"
     }
 
 	tiles {
 
 		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-			state "on", label:'${name}', action:"switch.off", icon:"st.Home.home30", backgroundColor:"#79b821", nextState:"turningOff"
-			state "off", label:'${name}', action:"switch.on", icon:"st.Home.home30", backgroundColor:"#ffffff", nextState:"turningOn"
-			state "turningOn", label:'${name}', action:"switch.off", icon:"st.Home.home30", backgroundColor:"#79b821", nextState:"turningOff"
-			state "turningOff", label:'${name}', action:"switch.on", icon:"st.Home.home30", backgroundColor:"#ffffff", nextState:"turningOn"
-		//	state "offline", label:'${name}', icon:"st.Home.home30", backgroundColor:"#ff0000"
+			state "off", label: '${currentValue}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
+			state "on", label: '${currentValue}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00a0dc"
 		}
 
 		standardTile("refresh", "device.switch", inactiveLabel: false, height: 1, width: 1, decoration: "flat") {
 			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
-        
-    //	standardTile("subscribe", "device.switch", inactiveLabel: false, height: 1, width: 1, decoration: "flat") {
-    //		state "default", label:"", action:"subscribe", icon:"st.Appliances.appliances3"
-    //	}
-        
-    //	standardTile("temperature", "device.temperature", inactiveLabel: false, height: 1, width: 1, decoration: "flat") {
-    //		state "default", label:'${currentValue}°', unit:"C", icon:"st.Weather.weather2"
-    //	}
 
         main "switch"
         details (["switch", "refresh"])
@@ -53,94 +34,15 @@ def parse(description) {
 
  	log.debug "SmarterCoffee Parse ${description}"
 
-// 	def map
-// 	def headerString
-// 	def bodyString
-// 	def slurper
-// 	def result
-   
-   
-// 	map = stringToMap(description)
-  	
-// 	headerString = new String(map.headers.decodeBase64())
-
-// 	if (headerString.contains("200 OK")) {
-    
-//     	try {
-// 			bodyString = new String(map.body.decodeBase64())
-// 		} catch (Exception e) {
-// 			// Keep this log for debugging StringIndexOutOfBoundsException issue
-// 			log.error("Exception decoding bytes in response")
-// 			throw e
-// 		}
-    
-		
-// 		slurper = new JsonSlurper()
-// 		result = slurper.parseText(bodyString)
-	
-// 		switch (result.status) {
-// 			case "ready":
-// 				sendEvent(name: 'switch', value: "off" as String)
-// 			break;
-// 			case "heating":
-// 				sendEvent(name: 'switch', value: "on" as String)
-				
-// 			}
-            
-//          log.debug "temp = " + result.sensors.temperature.raw.celsius
-//          sendEvent(name: "temperature", value: result.sensors.temperature.raw.celsius, unit: "C")
-			
-// 		}
-// 	else {
-//         //processes callbacks
-//    		bodyString = new String(map.body.decodeBase64())
-// 		slurper = new JsonSlurper()
-// 		result = slurper.parseText(bodyString)
-//         log.debug result
-        
-//         log.debug result.kettleheater
-//         if (result.kettleheater.toString() == "true") {
-//             log.debug "The kettle is on"
-//         	sendEvent(name: 'switch', value: "on" as String)
-//         }
-        
-//         log.debug result.kettlebusy
-//         if (result.kettlebusy.toString() == "false") {
-//             log.debug "The kettle is off"
-//         	sendEvent(name: 'switch', value: "off" as String)
-//         }
-        
-//         sendEvent(name: "temperature", value: result.temperature, unit: "C")   
-//         log.debug "temp = " + result.temperature
-// 	}
-// 	parse
 }
 
-// handle commands
-
 def installed() {
-	// if (!device.deviceNetworkId)
-	// 	device.deviceNetworkId = "testing123"
-
-	// sync("192.168.1.14", "2080", null, "192.168.1.15")
-	// log.debug "Installed: ${device.deviceNetworkId}"
-	//initialize()
+	getStatus();
 }
 
 def updated() {
-	// if (!device.deviceNetworkId)
-	// 	device.deviceNetworkId = "testing123"
-
-	// sync("192.168.1.14", "2080", null, "192.168.1.15")
-	// log.debug "Update: ${device.deviceNetworkId}"
-	//initialize()
+	getStatus()
 }
-
-// def initialize() {
-// 	log.info "iBrew ${textVersion()} ${textCopyright()}"
-// 	ipSetup()
-// 	poll()
-// }
 
 def on() {
  	log.debug "SmarterCoffee On"
@@ -152,13 +54,15 @@ def on() {
 }
 
 def startBrew() {
-	def dni = device.deviceNetworkId
-	def path = getDevicePath("start")
 	def host = getHostAddress()
-	def action = new physicalgraph.device.HubAction(
-		"""GET $path HTTP/1.1\r\nHOST: $host\r\n\r\n""", 
-		physicalgraph.device.Protocol.LAN, 
-		"$dni");
+	if (!host)
+		return 
+
+	//def body = [isGrind: false, cups: 1, strength: 0]
+	//def p = [method: "POST", path: getDevicePath("brew/on"), body: body, headers: ["HOST": host]]
+	def p = [method: "POST", path: getDevicePath("brew/on"), headers: ["HOST": host]]
+	def dni = device.deviceNetworkId
+    def action = new physicalgraph.device.HubAction(p, dni)
 
 	log.debug "SmarterCoffee startBrew ${action}"
 	return action
@@ -166,21 +70,11 @@ def startBrew() {
 
 def off() {
  	log.debug "SmarterCoffee Off"
-// 	api('off')
 }
 
 def poll() {
 	log.debug "SmarterCoffee Poll"
 	getStatus()
-    
-// 	if (device.deviceNetworkId != null) {
-// 		api('refresh')
-// 	}
-// 	else {
-// 		sendEvent(name: 'status', value: "error" as String)
-// 		sendEvent(name: 'network', value: "Not Connected" as String)
-// 		log.debug "DNI: Not set"
-// 	}
 }
 
 def refresh() {
@@ -189,39 +83,34 @@ def refresh() {
 }
 
 def getStatus() {
-	// def dni = device.deviceNetworkId
-	// def path = getDevicePath("status")
-	// def host = getHostAddress()
-	// def action = new physicalgraph.device.HubAction(
-	// 	"""GET $path HTTP/1.1\r\nHOST: $host\r\n\r\n""", 
-	// 	physicalgraph.device.Protocol.LAN, 
-	// 	"$dni", 
-	// 	[callback: getStatusCallback]);
+	def host = getHostAddress()
+	if (!host)
+		return 
 
-	// log.debug "SmarterCoffee getStatusAction ${action}"
-	// return action
+	def p = [method: "GET", path: getDevicePath(), headers: ["HOST": host, "Accept": "application/json"]]
+	def dni = device.deviceNetworkId
+	def o = [callback: getStatusCallback]
+    def action = new physicalgraph.device.HubAction(p, dni, o)
+
+	log.debug "SmarterCoffee getStatusAction ${action}"
+	return action
 }
 
-// void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
+void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
 
-// 	log.debug "getStatusCallback ${hubResponse}"
+	log.debug "getStatusCallback ${hubResponse}"
 
-// 	// TODO
-// 	if (hubResponse.status != 200) return
+	// TODO - errors?
+	if (hubResponse.status != 200) return
 
-// 	def body = hubResponse.json
+	def body = hubResponse.json
 
-// 	state.ready = body?.status?.ready
-// 	state.heater = body?.sensors?.heater
-
-// 	log.debug "state ${state}"
-
-// 	if (state.heater) {
-// 		sendEvent(name: "switch", value: "on", displayed: false)
-// 	} else {
-// 		sendEvent(name: "switch", value: "off", displayed: false)
-// 	}
-// }
+	if (body?.isBrewing) {
+		sendEvent(name: "switch", value: "on")
+	} else {
+		sendEvent(name: "switch", value: "off")
+	}
+}
 
 def sync(serverAddress, serverPort, serverMac, deviceId) {
 	log.debug "SmarterCoffee Sync $serverAddress $serverPort $serverMac $deviceId"
@@ -247,117 +136,16 @@ def sync(serverAddress, serverPort, serverMac, deviceId) {
 def getHostAddress() {
 	def serverAddress = getDataValue("serverAddress")
 	def serverPort = getDataValue("serverPort")
-	return "$serverAddress:$serverPort"
+	return (serverAddress && serverPort) ? "$serverAddress:$serverPort" : null
 }
 
 def getDevicePath(path) {
 	def deviceId = getDataValue("deviceId")
-	return "/api/device/$deviceId/$path"
+	def basePath = "/api/device/$deviceId"
+
+	return (path!=null && path.length()>0) ? "$basePath/$path" : basePath
 }
 
 def delayAction(long time) {
 	return new physicalgraph.device.HubAction("delay $time")
 }
-
-// def subscribe (){
-// 	log.debug "Executing 'subscribe'"
-// 	ipSetup()
-// 	subscribeAction()
-// }
-
-// def api(String APICommand, success = {}) {
-// 	def APIPath
-// 	def hubAction
-
-// 	switch (APICommand) {
-// 		case "on":
-// 			APIPath = "/api/" + settings.kettleip + "/start"
-// 			log.debug "The start command was sent"
-// 		break;
-// 		case "off":
-// 			APIPath = "/api/" + settings.kettleip + "/stop"
-// 			log.debug "The stop command was sent"
-// 		break;
-// 		case "refresh":
-// 			APIPath = "/api/" + settings.kettleip + "/status"
-// 			log.debug "The Status Command was sent"
-// 		break;
-// 	}
-  
-// 	switch (APICommand) {
-// 		case "refresh":
-// 			try {
-// 				hubAction = new physicalgraph.device.HubAction(
-// 				method: "GET",
-// 				path: APIPath,
-// 				headers: [HOST: "${settings.ip}:${settings.port}", Accept: "application/json"])
-// 			}
-// 			catch (Exception e) {
-// 				log.debug "Hit Exception $e on $hubAction"
-// 			}
-// 			break;
-// 		default:
-// 			try {
-// 				hubAction = [new physicalgraph.device.HubAction(
-// 				method: "GET",
-// 				path: APIPath,
-// 				headers: [HOST: "${settings.ip}:${settings.port}", Accept: "application/json"]
-// 				), delayAction(1000), api('refresh')]
-// 			}
-// 			catch (Exception e) {
-// 				log.debug "Hit Exception $e on $hubAction"
-// 			}
-// 			break;
-// 	}
-// 	return hubAction
-// }
-
-// private subscribeAction(callbackPath="") {
-//     def address = device.hub.getDataValue("localIP") + ":" + device.hub.getDataValue("localSrvPortTCP")
-
-//     def result = new physicalgraph.device.HubAction(
-//         method: "SUBSCRIBE",
-//         path: "/api/" + settings.kettleip + "/smartthings",
-//         headers: [
-//             HOST: "${settings.ip}:${settings.port}",
-//             CALLBACK: "<http://${address}/notify$callbackPath>",
-//             TIMEOUT: "Second-3600"])
-//     sendHubCommand(result)
-// }
-
-
-// def ipSetup() {
-// 	def hosthex
-// 	def porthex
-// 	if (settings.ip) {
-// 		hosthex = convertIPtoHex(settings.ip)
-// 	}
-// 	if (settings.port) {
-// 		porthex = convertPortToHex(settings.port)
-// 	}
-// 	if (settings.mac) {
-// 		device.deviceNetworkId = settings.mac
-// 	}
-// }
-
-// private String convertIPtoHex(ip) { 
-// 	String hexip = ip.tokenize( '.' ).collect {  String.format( '%02x', it.toInteger() ) }.join()
-// 	return hexip
-// }
-// private String convertPortToHex(port) {
-// 	String hexport = port.toString().format( '%04x', port.toInteger() )
-// 	return hexport
-// }
-// private delayAction(long time) {
-// 	new physicalgraph.device.HubAction("delay $time")
-// }
-
-
-
-// private def textVersion() {
-// 	def text = "Version 0.2"
-// }
-
-// private def textCopyright() {
-// 	def text = "Copyright © 2016 JB"
-// }
