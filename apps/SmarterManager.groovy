@@ -106,29 +106,11 @@ def ssdpHandler(evt) {
 
 	state.serverMac = parsedEvent?.mac
 	state.serverAddress = convertHexToIP(parsedEvent?.networkAddress)
-	state.serverPort = "8080";
+	state.serverPort = "2080";
 
-	//parsedEvent << ["hub":state.hubId]
 	log.debug "ssdpHandler parsedEvent: ${parsedEvent}"
 
 	discoverDevices()
-
-
-	//def devices = getDevices()
-	// String ssdpUSN = parsedEvent.ssdpUSN.toString()
-	// if (devices."${ssdpUSN}") {
-	// 	def d = devices."${ssdpUSN}"
-	// 	if (d.networkAddress != parsedEvent.networkAddress || d.deviceAddress != parsedEvent.deviceAddress) {
-	// 		d.networkAddress = parsedEvent.networkAddress
-	// 		d.deviceAddress = parsedEvent.deviceAddress
-	// 		def child = getChildDevice(parsedEvent.mac)
-	// 		if (child) {
-	// 			child.sync(parsedEvent.networkAddress, parsedEvent.deviceAddress)
-	// 		}
-	// 	}
-	// } else {
-	// 	devices << ["${ssdpUSN}": parsedEvent]
-	// }
 }
 
 def getDevices() {
