@@ -1,5 +1,5 @@
 metadata {
-	definition (name: "SmarterCoffee", namespace: "petermajor", author: "Peter Major") {
+	definition (name: "Smarter Coffee", namespace: "petermajor", author: "Peter Major") {
 		capability "Actuator"
 		capability "Polling"
 		capability "Refresh"

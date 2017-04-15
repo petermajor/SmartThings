@@ -15,7 +15,7 @@
  */
 
 definition(
-		name: "SmarterManager",
+		name: "Smarter Manager",
 		namespace: "petermajor",
 		author: "Peter Major",
 		description: "Smarter Service Manager - discovers Smarter devices on your network",
@@ -99,18 +99,13 @@ def ssdpHandler(evt) {
 	def description = evt.description
 	log.debug "ssdpHandler description: ${description}"
 
-	state.hubId = evt.hubId
-	log.debug "ssdpHandler hubId: ${evt.hubId}"
-
 	def parsedEvent = parseLanMessage(description)
-
-	state.serverMac = parsedEvent?.mac
-	state.serverAddress = convertHexToIP(parsedEvent?.networkAddress)
-	state.serverPort = "2080";
-
 	log.debug "ssdpHandler parsedEvent: ${parsedEvent}"
 
-	discoverDevices()
+	def serverAddress = convertHexToIP(parsedEvent?.networkAddress)
+	def serverPort = "2080";
+
+	discoverDevices(serverAddress, serverPort)
 }
 
 def getDevices() {
@@ -120,12 +115,12 @@ def getDevices() {
 	state.devices
 }
 
-def discoverDevices() {
+def discoverDevices(serverAddress, serverPort) {
 
  	log.debug "discoverDevices"
 
 	try {
-		def action = new physicalgraph.device.HubAction("""GET /api/device HTTP/1.1\r\nHOST: $state.serverAddress:$state.serverPort\r\n\r\n""", physicalgraph.device.Protocol.LAN, "$state.serverAddress:$state.serverPort", [callback: discoverDevicesCallback]);
+		def action = new physicalgraph.device.HubAction("""GET /api/device HTTP/1.1\r\nHOST: $serverAddress:$serverPort\r\n\r\n""", physicalgraph.device.Protocol.LAN, "$serverAddress:$serverPort", [callback: discoverDevicesCallback]);
  		log.debug "action {$action}"
 		sendHubCommand(action)
 	}
@@ -140,6 +135,11 @@ void discoverDevicesCallback(physicalgraph.device.HubResponse hubResponse) {
 
  	if (hubResponse.status != 200) return
 
+ 	def serverMac = hubResponse.mac
+ 	def serverAddress = convertHexToIP(hubResponse.ip)
+ 	def serverPort = convertHexToInt(hubResponse.port)
+ 	def hubId = hubResponse.hubId
+
 	def body = hubResponse.json
  	log.debug "body {$hubResponse.json}"
 
@@ -147,11 +147,17 @@ void discoverDevicesCallback(physicalgraph.device.HubResponse hubResponse) {
 
 	body.values().each {
 		def id = it.id
+
+		it.serverMac = serverMac
+		it.serverAddress = serverAddress
+		it.serverPort = serverPort
+		it.hubId = hubId
+		
 		if (devices["$id"]) {
  			def child = getChildDevice(id)
 			if (child) {
  				log.debug "device known $id, syncing..."
-				child.sync(state.serverAddress, state.serverPort, state.serverMac, it.id)
+				child.sync(it.serverAddress, it.serverPort, it.serverMac, it.id)
 			}
 
 		} else {
@@ -176,14 +182,14 @@ def addDevices() {
 		}
 
 		if (!d) {
-			log.debug "Creating device with dni: $id in hub: $state.hubId"
-			addChildDevice("petermajor", "SmarterCoffee", id, state.hubId, [
+			log.debug "Creating device with dni: $id in hub: $selectedDevice.hubId"
+			addChildDevice("petermajor", "Smarter Coffee", id, selectedDevice.hubId, [
 				"name": selectedDevice.name,
 				"label": selectedDevice.name,
 				"data": [
-					"serverAddress": state.serverAddress,
-					"serverPort": state.serverPort,
-					"serverMac": state.serverMac,
+					"serverAddress": selectedDevice.serverAddress,
+					"serverPort": selectedDevice.serverPort,
+					"serverMac": selectedDevice.serverMac,
 					"deviceId": id
 				]
 			])
