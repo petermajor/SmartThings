@@ -105,6 +105,8 @@ void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
 
 	def body = hubResponse.json
 
+	log.debug "getStatusCallback ${body}"
+
 	if (body?.isBrewing) {
 		sendEvent(name: "switch", value: "on")
 	} else {
