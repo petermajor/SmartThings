@@ -4,53 +4,65 @@ metadata {
 		capability "Polling"
 		capability "Refresh"
 		capability "Switch"
-        
+
 		command "refresh"
-	}
-    
-	preferences {
+		command "changeCups"
+		command "changeStrength"
+		command "changeGrind"
+		command "changeHotplate"
 	}
 
-    simulator {
-    }
+	preferences {
+	}
 
 	tiles(scale: 2) {
 
 		standardTile("switch", "device.switch", width: 6, height: 4, canChangeIcon: true, decoration: "flat") {
-			state "off", label: 'off', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
-			state "on", label: 'on', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00a0dc"
+			state "off", label: 'off', action: "switch.on", icon: "st.Appliances.appliances14", backgroundColor: "#ffffff", nextState:"on"
+			state "on", label: 'on', action: "switch.off", icon: "st.Appliances.appliances14", backgroundColor: "#00a0dc", nextState:"off"
 		}
 
-		valueTile("cups", "device.cups", inactiveLabel: false, width: 2, height: 2) {
-			state "cups", label:'${currentValue} cups'
+		standardTile("cups", "device.cups", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
+			state "1", label:'1\ncup', action: "changeCups", nextState:"2"
+			state "2", label:'2\ncups', action: "changeCups", nextState:"3"
+			state "3", label:'3\ncups', action: "changeCups", nextState:"4"
+			state "4", label:'4\ncups', action: "changeCups", nextState:"5"
+			state "5", label:'5\ncups', action: "changeCups", nextState:"6"
+			state "6", label:'6\ncups', action: "changeCups", nextState:"7"
+			state "7", label:'7\ncups', action: "changeCups", nextState:"8"
+			state "8", label:'8\ncups', action: "changeCups", nextState:"9"
+			state "9", label:'9\ncups', action: "changeCups", nextState:"10"
+			state "10", label:'10\ncups', action: "changeCups", nextState:"11"
+			state "11", label:'11\ncups', action: "changeCups", nextState:"12"
+			state "12", label:'12\ncups', action: "changeCups", nextState:"1"
 		}
 
-		standardTile("strength", "device.strength", inactiveLabel: false, width: 2, height: 2) {
-			state "0", label: 'weak strength' 
-			state "1", label: 'medium strength'
-			state "2", label: 'strong strength'
+		standardTile("strength", "device.strength", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
+			state "0", label: 'weak\nstrength', action: "changeStrength", nextState:"1"
+			state "1", label: 'medium\nstrength', action: "changeStrength", nextState:"2"
+			state "2", label: 'strong\nstrength', action: "changeStrength", nextState:"0"
 		}
 
-		standardTile("isGrind", "device.isGrind", inactiveLabel: false, width: 2, height: 2) {
-			state "true", label: 'grind mode' 
-			state "false", label: 'filter mode'
+		standardTile("isGrind", "device.isGrind", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
+			state "true", label: 'grind\nmode', action: "changeGrind", nextState:"false"
+			state "false", label: 'filter\nmode', action: "changeGrind", nextState:"true"
+		}
+
+		standardTile("isHotplate", "device.isHotplate", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
+			state "true", label: 'heater\non', backgroundColor: "#00a0dc", action: "changeHotplate", nextState:"false"
+			state "false", label: 'heater\noff', backgroundColor: "#ffffff", action: "changeHotplate", nextState:"true"
 		}
 
 		valueTile("waterLevel", "device.waterLevel", inactiveLabel: false, width: 2, height: 2) {
-			state "0", label: 'water empty' 
-			state "1", label: 'water low'
-			state "2", label: 'water half full'
-			state "3", label: 'water full'
-		}
-
-		valueTile("isHotplateOn", "device.isHotplateOn", inactiveLabel: false, width: 2, height: 2) {
-			state "true", label: 'heater on', backgroundColor: "#ff0000"  
-			state "false", label: 'heater off', backgroundColor: "#ffffff" 
+			state "0", label: 'water\nempty', backgroundColor: "#ff0000" 
+			state "1", label: 'water\nlow', backgroundColor: "#ffff00" 
+			state "2", label: 'water\nhalf full', backgroundColor: "#ffffff" 
+			state "3", label: 'water\nfull', backgroundColor: "#ffffff" 
 		}
 
 		valueTile("isCarafeDetected", "device.isCarafeDetected", inactiveLabel: false, width: 2, height: 2) {
 			state "true", label: 'carafe', backgroundColor: "#ffffff" 
-			state "false", label: 'no carafe', backgroundColor: "#ff0000"
+			state "false", label: 'no\ncarafe', backgroundColor: "#ff0000"
 		}
 
 		standardTile("refresh", "device.switch", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
@@ -58,7 +70,7 @@ metadata {
 		}
 
 		main "switch"
-		details (["switch", "cups", "strength", "isGrind", "waterLevel", "isHotplateOn", "isCarafeDetected", "refresh"])
+		details (["switch", "cups", "strength", "isGrind", "isHotplate", "waterLevel", "isCarafeDetected", "refresh"])
 	}
 }
 
@@ -77,31 +89,87 @@ def updated() {
 }
 
 def on() {
- 	log.debug "SmarterCoffee On"
+	log.debug "SmarterCoffee On"
 
-	def result = [startBrew()]
-	result << delayAction(2000)
-	result << getStatus()
-	result.flatten()
-}
+	int currentCups = Integer.parseInt(device.currentValue("cups"))
+	int currentStrength = Integer.parseInt(device.currentValue("strength"))
+	Boolean currentIsGrind = new Boolean(device.currentValue("isGrind"))
 
-def startBrew() {
-	def host = getHostAddress()
-	if (!host)
-		return 
+	def payload = [
+		isGrind: currentIsGrind, 
+		cups: currentCups, 
+		strength: currentStrength]
 
-	//def body = [isGrind: false, cups: 1, strength: 0]
-	//def p = [method: "POST", path: getDevicePath("brew/on"), body: body, headers: ["HOST": host]]
-	def p = [method: "POST", path: getDevicePath("brew/on"), headers: ["HOST": host]]
-	def dni = device.deviceNetworkId
-    def action = new physicalgraph.device.HubAction(p, dni)
+	sendEvent(name: "switch", value: "on")
 
-	log.debug "SmarterCoffee startBrew ${action}"
-	return action
+	return doPOST("brew/on", payload)
 }
 
 def off() {
- 	log.debug "SmarterCoffee Off"
+	log.debug "SmarterCoffee Off"
+
+	sendEvent(name: "switch", value: "off")
+
+	return doPOST("brew/off")
+}
+
+def changeCups() {
+
+	log.debug "SmarterCoffee changeCups"
+
+	int currentCups = Integer.parseInt(device.currentValue("cups"))
+	int newCups = currentCups >= 12 ? 1 : currentCups + 1;
+
+	def payload = [cups: newCups]
+
+	sendEvent(name: "cups", value: newCups.toString())
+
+	return doPOST("cups", payload)
+}
+
+def changeStrength() {
+
+	log.debug "SmarterCoffee changeStrength"
+
+	int currentStrength = Integer.parseInt(device.currentValue("strength"))
+	int newStrength = currentStrength >= 2 ? 0 : currentStrength + 1;
+
+	def payload = [strength: newStrength]
+
+	sendEvent(name: "strength", value: newStrength.toString())
+
+	return doPOST("strength", payload)
+}
+
+def changeGrind() {
+
+	log.debug "SmarterCoffee changeGrind"
+
+	Boolean currentIsGrind = new Boolean(device.currentValue("isGrind"))
+	Boolean newIsGrind = !currentIsGrind
+	
+	def payload = [isGrind: newIsGrind]
+
+	sendEvent(name: "isGrind", value: newIsGrind.toString())
+
+	return doPOST("grind", payload)
+}
+
+def changeHotplate() {
+
+	log.debug "changeHotplate"
+
+	Boolean currentIsHotplate = new Boolean(device.currentValue("isHotplate"))
+	Boolean newIsHotplate = !currentIsHotplate
+	
+	log.debug "changeGrind $currentIsHotplate $newIsHotplate"
+
+	def payload = newIsHotplate ? [mins: 5] : null
+	def path = newIsHotplate ? "hotplate/on" : "hotplate/off"
+
+	sendEvent(name: "isHotplate", value: newIsHotplate.toString())
+
+	return doPOST(path, payload)
 }
 
 def poll() {
@@ -140,12 +208,30 @@ void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
 	log.debug "getStatusCallback ${body}"
 
 	sendEvent(name: "switch", value: body?.isBrewing ? "on" : "off")
-	sendEvent(name: "cups", value: body.cups)	
-	sendEvent(name: "strength", value: body.strength)
-	sendEvent(name: "isGrind", value: body.isGrind)
-	sendEvent(name: "waterLevel", value: body.waterLevel)
-	sendEvent(name: "isHotplateOn", value: body.isHotplateOn)
-	sendEvent(name: "isCarafeDetected", value: body.isCarafeDetected)
+	sendEvent(name: "cups", value: body.cups.toString())	
+	sendEvent(name: "strength", value: body.strength.toString())
+	sendEvent(name: "isGrind", value: body.isGrind.toString())
+	sendEvent(name: "isHotplate", value: body.isHotplateOn.toString())
+	sendEvent(name: "waterLevel", value: body.waterLevel.toString())
+	sendEvent(name: "isCarafeDetected", value: body.isCarafeDetected.toString())
+}
+
+def doPOST(String path, Map data) {
+
+	def host = getHostAddress()
+	def fullPath = getDevicePath(path)
+
+	def params = [
+        method: "POST",
+        path: fullPath,
+        body: data,
+        headers: [HOST: host]];
+
+    def action = new physicalgraph.device.HubAction(params, device.deviceNetworkId)
+
+	log.debug "SmarterCoffee doPOST ${action}"
+
+	action
 }
 
 def sync(serverAddress, serverPort, serverMac, deviceId) {
