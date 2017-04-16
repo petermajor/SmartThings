@@ -14,19 +14,51 @@ metadata {
     simulator {
     }
 
-	tiles {
+	tiles(scale: 2) {
 
-		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-			state "off", label: '${currentValue}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
-			state "on", label: '${currentValue}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00a0dc"
+		standardTile("switch", "device.switch", width: 6, height: 4, canChangeIcon: true, decoration: "flat") {
+			state "off", label: 'off', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
+			state "on", label: 'on', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00a0dc"
 		}
 
-		standardTile("refresh", "device.switch", inactiveLabel: false, height: 1, width: 1, decoration: "flat") {
+		valueTile("cups", "device.cups", inactiveLabel: false, width: 2, height: 2) {
+			state "cups", label:'${currentValue} cups'
+		}
+
+		standardTile("strength", "device.strength", inactiveLabel: false, width: 2, height: 2) {
+			state "0", label: 'weak strength' 
+			state "1", label: 'medium strength'
+			state "2", label: 'strong strength'
+		}
+
+		standardTile("isGrind", "device.isGrind", inactiveLabel: false, width: 2, height: 2) {
+			state "true", label: 'grind' 
+			state "false", label: 'filter'
+		}
+
+		valueTile("waterLevel", "device.waterLevel", inactiveLabel: false, width: 2, height: 2) {
+			state "0", label: 'water empty' 
+			state "1", label: 'water low'
+			state "2", label: 'water half full'
+			state "3", label: 'water full'
+		}
+
+		valueTile("isHotplateOn", "device.isHotplateOn", inactiveLabel: false, width: 2, height: 2) {
+			state "true", label: 'heater on' 
+			state "false", label: 'heater off'
+		}
+
+		valueTile("isCarafeDetected", "device.isCarafeDetected", inactiveLabel: false, width: 2, height: 2) {
+			state "true", label: 'carafe yes' 
+			state "false", label: 'carafe no'
+		}
+
+		standardTile("refresh", "device.switch", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
 			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
 
-        main "switch"
-        details (["switch", "refresh"])
+		main "switch"
+		details (["switch", "cups", "strength", "isGrind", "waterLevel", "isHotplateOn", "isCarafeDetected", "refresh"])
 	}
 }
 
@@ -107,11 +139,13 @@ void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
 
 	log.debug "getStatusCallback ${body}"
 
-	if (body?.isBrewing) {
-		sendEvent(name: "switch", value: "on")
-	} else {
-		sendEvent(name: "switch", value: "off")
-	}
+	sendEvent(name: "switch", value: body?.isBrewing ? "on" : "off")
+	sendEvent(name: "cups", value: body.cups)	
+	sendEvent(name: "strength", value: body.strength)
+	sendEvent(name: "isGrind", value: body.isGrind)
+	sendEvent(name: "waterLevel", value: body.waterLevel)
+	sendEvent(name: "isHotplateOn", value: body.isHotplateOn)
+	sendEvent(name: "isCarafeDetected", value: body.isCarafeDetected)
 }
 
 def sync(serverAddress, serverPort, serverMac, deviceId) {
