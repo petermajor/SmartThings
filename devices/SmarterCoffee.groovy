@@ -32,8 +32,8 @@ metadata {
 		}
 
 		standardTile("isGrind", "device.isGrind", inactiveLabel: false, width: 2, height: 2) {
-			state "true", label: 'grind' 
-			state "false", label: 'filter'
+			state "true", label: 'grind mode' 
+			state "false", label: 'filter mode'
 		}
 
 		valueTile("waterLevel", "device.waterLevel", inactiveLabel: false, width: 2, height: 2) {
@@ -44,13 +44,13 @@ metadata {
 		}
 
 		valueTile("isHotplateOn", "device.isHotplateOn", inactiveLabel: false, width: 2, height: 2) {
-			state "true", label: 'heater on' 
-			state "false", label: 'heater off'
+			state "true", label: 'heater on', backgroundColor: "#ff0000"  
+			state "false", label: 'heater off', backgroundColor: "#ffffff" 
 		}
 
 		valueTile("isCarafeDetected", "device.isCarafeDetected", inactiveLabel: false, width: 2, height: 2) {
-			state "true", label: 'carafe yes' 
-			state "false", label: 'carafe no'
+			state "true", label: 'carafe', backgroundColor: "#ffffff" 
+			state "false", label: 'no carafe', backgroundColor: "#ff0000"
 		}
 
 		standardTile("refresh", "device.switch", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
