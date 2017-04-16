@@ -5,7 +5,6 @@ metadata {
 		capability "Refresh"
 		capability "Switch"
 
-		command "refresh"
 		command "changeCups"
 		command "changeStrength"
 		command "changeGrind"
@@ -102,7 +101,7 @@ def on() {
 
 	sendEvent(name: "switch", value: "on")
 
-	return doPOST("brew/on", payload)
+	return doPost("brew/on", payload)
 }
 
 def off() {
@@ -110,7 +109,7 @@ def off() {
 
 	sendEvent(name: "switch", value: "off")
 
-	return doPOST("brew/off")
+	return doPost("brew/off")
 }
 
 def changeCups() {
@@ -124,7 +123,7 @@ def changeCups() {
 
 	sendEvent(name: "cups", value: newCups.toString())
 
-	return doPOST("cups", payload)
+	return doPost("cups", payload)
 }
 
 def changeStrength() {
@@ -138,7 +137,7 @@ def changeStrength() {
 
 	sendEvent(name: "strength", value: newStrength.toString())
 
-	return doPOST("strength", payload)
+	return doPost("strength", payload)
 }
 
 def changeGrind() {
@@ -152,7 +151,7 @@ def changeGrind() {
 
 	sendEvent(name: "isGrind", value: newIsGrind.toString())
 
-	return doPOST("grind", payload)
+	return doPost("grind", payload)
 }
 
 def changeHotplate() {
@@ -169,7 +168,7 @@ def changeHotplate() {
 
 	sendEvent(name: "isHotplate", value: newIsHotplate.toString())
 
-	return doPOST(path, payload)
+	return doPost(path, payload)
 }
 
 def poll() {
@@ -187,7 +186,13 @@ def getStatus() {
 	if (!host)
 		return 
 
-	def p = [method: "GET", path: getDevicePath(), headers: ["HOST": host, "Accept": "application/json"]]
+	def p = [
+		method: "GET", 
+		path: getDevicePath(), 
+		headers: [
+			HOST: host, 
+			Accept: "application/json"]]
+
 	def dni = device.deviceNetworkId
 	def o = [callback: getStatusCallback]
     def action = new physicalgraph.device.HubAction(p, dni, o)
@@ -216,7 +221,48 @@ void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
 	sendEvent(name: "isCarafeDetected", value: body.isCarafeDetected.toString())
 }
 
-def doPOST(String path, Map data) {
+def doSubscribe() {
+
+	def host = getHostAddress()
+	def fullPath = getDevicePath()
+	def hub = getLocalHubAddress()
+
+	def params = [
+		method: "SUBSCRIBE",
+		path: fullPath,
+		headers: [
+			HOST: host,
+			CALLBACK: "<http://${hub}/notify-${device.deviceNetworkId}>", 
+			Accept: "application/json",
+			TIMEOUT: "Second-3600"]]
+
+	def o = [callback: subscribeCallback]
+
+	def dni = device.deviceNetworkId
+
+	def action = new physicalgraph.device.HubAction(params, dni, o)
+
+	log.debug "SmarterCoffee doSubscribe ${action}"
+
+	action
+}
+
+void subscribeCallback(physicalgraph.device.HubResponse hubResponse) {
+
+	log.debug "subscribeCallback ${hubResponse}"
+
+	if (hubResponse.status != 200) return
+
+	def sid = hubResponse.headers["SID"];
+	if (sid)
+		sid -= "uuid:".trim()
+
+	log.debug "subscribeCallback SID ${sid}"
+
+	//updateDataValue("subscriptionId", sid)
+}
+
+def doPost(String path, Map data) {
 
 	def host = getHostAddress()
 	def fullPath = getDevicePath(path)
@@ -225,11 +271,11 @@ def doPOST(String path, Map data) {
         method: "POST",
         path: fullPath,
         body: data,
-        headers: [HOST: host]];
+        headers: [HOST: host]]
 
     def action = new physicalgraph.device.HubAction(params, device.deviceNetworkId)
 
-	log.debug "SmarterCoffee doPOST ${action}"
+	log.debug "SmarterCoffee doPost ${action}"
 
 	action
 }
@@ -259,6 +305,12 @@ def getHostAddress() {
 	def serverAddress = getDataValue("serverAddress")
 	def serverPort = getDataValue("serverPort")
 	return (serverAddress && serverPort) ? "$serverAddress:$serverPort" : null
+}
+
+def getLocalHubAddress() {
+	def localIp = device.hub.getDataValue("localIP");
+	def localSvcPort = device.hub.getDataValue("localSrvPortTCP");
+	return (localIp && localSvcPort) ? "$localIp:$localSvcPort" : null
 }
 
 def getDevicePath(path) {
