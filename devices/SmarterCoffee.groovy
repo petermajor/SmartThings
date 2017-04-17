@@ -87,6 +87,16 @@ def updated() {
 	getStatus()
 }
 
+def poll() {
+	log.debug "SmarterCoffee Poll"
+	getStatus()
+}
+
+def refresh() {
+	log.debug "SmarterCoffee Refresh"
+	getStatus()
+}
+
 def on() {
 	log.debug "SmarterCoffee On"
 
@@ -171,16 +181,6 @@ def changeHotplate() {
 	return doPost(path, payload)
 }
 
-def poll() {
-	log.debug "SmarterCoffee Poll"
-	getStatus()
-}
-
-def refresh() {
-	log.debug "SmarterCoffee Refresh"
-	getStatus()
-}
-
 def getStatus() {
 	def host = getHostAddress()
 	if (!host)
@@ -209,16 +209,19 @@ void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
 	if (hubResponse.status != 200) return
 
 	def body = hubResponse.json
-
 	log.debug "getStatusCallback ${body}"
 
-	sendEvent(name: "switch", value: body?.isBrewing ? "on" : "off")
-	sendEvent(name: "cups", value: body.cups.toString())	
-	sendEvent(name: "strength", value: body.strength.toString())
-	sendEvent(name: "isGrind", value: body.isGrind.toString())
-	sendEvent(name: "isHotplate", value: body.isHotplateOn.toString())
-	sendEvent(name: "waterLevel", value: body.waterLevel.toString())
-	sendEvent(name: "isCarafeDetected", value: body.isCarafeDetected.toString())
+	def status = body?.status
+
+	if (status) {
+		sendEvent(name: "switch", value: status.isBrewing ? "on" : "off")
+		sendEvent(name: "cups", value: status.cups.toString())	
+		sendEvent(name: "strength", value: status.strength.toString())
+		sendEvent(name: "isGrind", value: status.isGrind.toString())
+		sendEvent(name: "isHotplate", value: status.isHotplateOn.toString())
+		sendEvent(name: "waterLevel", value: status.waterLevel.toString())
+		sendEvent(name: "isCarafeDetected", value: status.isCarafeDetected.toString())
+	}
 }
 
 def doSubscribe() {
