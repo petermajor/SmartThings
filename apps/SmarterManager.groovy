@@ -14,6 +14,8 @@
  *
  */
 
+import groovy.json.JsonSlurper
+
 definition(
 		name: "Smarter Manager",
 		namespace: "petermajor",
@@ -82,6 +84,46 @@ def initialize() {
 
 	// check devices for ip change
 	runEvery5Minutes("ssdpDiscover")
+
+	log.trace "subscribe to location"
+	subscribe(location, null, locationHandler, [filterEvents:false])
+}
+
+def locationHandler(evt) {
+
+	def description = evt.description
+
+	def map = stringToMap(evt.stringValue)
+
+	def headersString = map.get("headers")
+	if (headersString == null) {
+		return
+	}
+
+	def headers = getHttpHeaders(headersString);
+	if (headers.get("POST /smarter-coffee-callback HTTP/1.1") == null) {
+		return;
+	}
+
+	def bodyString = map.get("body")
+	if (bodyString == null) {
+		return
+	}
+
+	def device = getHttpBody(bodyString);
+
+	if (!device) {
+		return
+	}
+
+	def devices = getDevices()
+	if (devices["${device.id}"]) {
+		def child = getChildDevice(device.id)
+		if (child) {
+			log.debug "device ${device.id} found, updating status..."
+			child.updateStatus(device.status)
+		}
+	}
 }
 
 void ssdpSubscribe() {
@@ -195,6 +237,24 @@ def addDevices() {
 			])
 		}
 	}
+}
+
+private getHttpHeaders(headers) {
+	def obj = [:]
+	new String(headers.decodeBase64()).split("\r\n").each {param ->
+    def nameAndValue = param.split(":")
+    obj[nameAndValue[0]] = (nameAndValue.length == 1) ? "" : nameAndValue[1].trim()
+	}
+  return obj
+}
+
+private getHttpBody(body) {
+  def obj = null;
+  if (body) {
+    def slurper = new JsonSlurper()
+    obj = slurper.parseText(new String(body.decodeBase64()))
+  }
+  return obj
 }
 
 private Integer convertHexToInt(hex) {

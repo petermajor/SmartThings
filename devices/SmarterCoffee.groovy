@@ -54,7 +54,7 @@ metadata {
 
 		valueTile("waterLevel", "device.waterLevel", inactiveLabel: false, width: 2, height: 2) {
 			state "0", label: 'water\nempty', backgroundColor: "#ff0000" 
-			state "1", label: 'water\nlow', backgroundColor: "#ffff00" 
+			state "1", label: 'water\nlow', backgroundColor: "#ff0000" 
 			state "2", label: 'water\nhalf full', backgroundColor: "#ffffff" 
 			state "3", label: 'water\nfull', backgroundColor: "#ffffff" 
 		}
@@ -94,7 +94,8 @@ def poll() {
 
 def refresh() {
 	log.debug "SmarterCoffee Refresh"
-	getStatus()
+	//getStatus()
+	doSubscribe();
 }
 
 def on() {
@@ -214,14 +215,21 @@ void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
 	def status = body?.status
 
 	if (status) {
-		sendEvent(name: "switch", value: status.isBrewing ? "on" : "off")
-		sendEvent(name: "cups", value: status.cups.toString())	
-		sendEvent(name: "strength", value: status.strength.toString())
-		sendEvent(name: "isGrind", value: status.isGrind.toString())
-		sendEvent(name: "isHotplate", value: status.isHotplateOn.toString())
-		sendEvent(name: "waterLevel", value: status.waterLevel.toString())
-		sendEvent(name: "isCarafeDetected", value: status.isCarafeDetected.toString())
+		updateStatus(status)
 	}
+}
+
+void updateStatus(status) {
+
+	log.debug "updateStatus ${status}"
+
+	sendEvent(name: "switch", value: status.isBrewing ? "on" : "off")
+	sendEvent(name: "cups", value: status.cups.toString())	
+	sendEvent(name: "strength", value: status.strength.toString())
+	sendEvent(name: "isGrind", value: status.isGrind.toString())
+	sendEvent(name: "isHotplate", value: status.isHotplateOn.toString())
+	sendEvent(name: "waterLevel", value: status.waterLevel.toString())
+	sendEvent(name: "isCarafeDetected", value: status.isCarafeDetected.toString())
 }
 
 def doSubscribe() {
@@ -231,13 +239,13 @@ def doSubscribe() {
 	def hub = getLocalHubAddress()
 
 	def params = [
-		method: "SUBSCRIBE",
+		method: 'SUBSCRIBE',
 		path: fullPath,
 		headers: [
 			HOST: host,
-			CALLBACK: "<http://${hub}/notify-${device.deviceNetworkId}>", 
-			Accept: "application/json",
-			TIMEOUT: "Second-3600"]]
+			CALLBACK: "<http://${hub}/smarter-coffee-callback>", 
+			Accept: 'application/json',
+			TIMEOUT: 'Second-3600']]
 
 	def o = [callback: subscribeCallback]
 
@@ -257,12 +265,10 @@ void subscribeCallback(physicalgraph.device.HubResponse hubResponse) {
 	if (hubResponse.status != 200) return
 
 	def sid = hubResponse.headers["SID"];
-	if (sid)
-		sid -= "uuid:".trim()
 
 	log.debug "subscribeCallback SID ${sid}"
 
-	//updateDataValue("subscriptionId", sid)
+	updateDataValue("subscriptionId", sid)
 }
 
 def doPost(String path, Map data) {
