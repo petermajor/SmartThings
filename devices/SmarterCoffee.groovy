@@ -1,3 +1,22 @@
+/**
+ *  Smarter Coffee
+ *
+ *  Copyright 2017 Peter Major
+ *
+ *  Version 1.0.0   17 Apr 2017		Initial Release
+ *
+ *	Version History
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ */
+
 metadata {
 	definition (name: "Smarter Coffee", namespace: "petermajor", author: "Peter Major") {
 		capability "Actuator"
@@ -80,11 +99,20 @@ def parse(description) {
 }
 
 def installed() {
-	getStatus();
+	// on install the first status seems to be too early
+	// so delay it a couple of secs
+	runIn(2, initialize)
 }
 
 def updated() {
-	getStatus()
+}
+
+def initialize() {
+
+	log.debug "SmarterCoffee Initialize"
+
+	def action = getStatus()
+	sendHubCommand(action)
 }
 
 def poll() {
@@ -94,8 +122,7 @@ def poll() {
 
 def refresh() {
 	log.debug "SmarterCoffee Refresh"
-	//getStatus()
-	doSubscribe();
+	getStatus()
 }
 
 def on() {
@@ -217,6 +244,11 @@ void getStatusCallback(physicalgraph.device.HubResponse hubResponse) {
 	if (status) {
 		updateStatus(status)
 	}
+
+	if (!getDataValue("subscriptionId")) {
+		doSubscribe();
+	}
+
 }
 
 void updateStatus(status) {
@@ -245,7 +277,12 @@ def doSubscribe() {
 			HOST: host,
 			CALLBACK: "<http://${hub}/smarter-coffee-callback>", 
 			Accept: 'application/json',
-			TIMEOUT: 'Second-3600']]
+			TIMEOUT: 'Second-360']]
+
+	def sid = getDataValue("subscriptionId")
+	if (sid) {
+		params.headers << [SID: sid]
+	}
 
 	def o = [callback: subscribeCallback]
 
@@ -255,7 +292,11 @@ def doSubscribe() {
 
 	log.debug "SmarterCoffee doSubscribe ${action}"
 
-	action
+	// subscription expires in 6 min, 
+	// so resubscribe in 5 mins just to be safe
+	runIn(5*60, doSubscribe)
+
+	sendHubCommand(action)
 }
 
 void subscribeCallback(physicalgraph.device.HubResponse hubResponse) {
@@ -286,7 +327,7 @@ def doPost(String path, Map data) {
 
 	log.debug "SmarterCoffee doPost ${action}"
 
-	action
+	return action
 }
 
 def sync(serverAddress, serverPort, serverMac, deviceId) {
@@ -327,8 +368,4 @@ def getDevicePath(path) {
 	def basePath = "/api/device/$deviceId"
 
 	return (path!=null && path.length()>0) ? "$basePath/$path" : basePath
-}
-
-def delayAction(long time) {
-	return new physicalgraph.device.HubAction("delay $time")
 }

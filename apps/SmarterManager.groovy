@@ -1,8 +1,11 @@
 /**
- *  SmarterManager
+ *  Smarter Manager
  *
  *  Copyright 2017 Peter Major
  *
+ *  Version 1.0.0   17 Apr 2017		Initial Release
+ *
+ *	Version History
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
  *
