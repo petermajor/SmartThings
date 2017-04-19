@@ -318,12 +318,12 @@ def doPost(String path, Map data) {
 	def fullPath = getDevicePath(path)
 
 	def params = [
-        method: "POST",
-        path: fullPath,
-        body: data,
-        headers: [HOST: host]]
+		method: "POST",
+		path: fullPath,
+		body: data,
+		headers: [HOST: host]]
 
-    def action = new physicalgraph.device.HubAction(params, device.deviceNetworkId)
+	def action = new physicalgraph.device.HubAction(params, device.deviceNetworkId)
 
 	log.debug "SmarterCoffee doPost ${action}"
 
