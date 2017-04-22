@@ -4,6 +4,7 @@
  *  Copyright 2017 Peter Major
  *
  *  Version 1.0.0   17 Apr 2017		Initial Release
+ *  Version 1.1.0   22 Apr 2017		Notify user when start brew fails
  *
  *	Version History
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -57,6 +58,9 @@ def deviceDiscovery() {
 		return dynamicPage(name: "deviceDiscovery", title: "Discovery Finished", nextPage: "", install: true, uninstall: true) {
 			section("Found ${options.size() ?: 0} Smarter " + (options.size() == 1 ? "device" : "devices") + " on the network") {
 				input "selectedDevices", "enum", required: false, title: "Select Devices", multiple: true, options: options
+			}
+			section("Notifications") {
+				input "notifyOnCarafeNotReady", "bool", required: true, title: "Carafe not ready", default: true
 			}
 		}
 	}
@@ -113,19 +117,34 @@ def locationHandler(evt) {
 		return
 	}
 
-	def device = getHttpBody(bodyString);
+	def body = getHttpBody(bodyString)
 
-	if (!device) {
+	def id = body?.id
+	if (!id) {
 		return
 	}
 
-	def devices = getDevices()
-	if (devices["${device.id}"]) {
-		def child = getChildDevice(device.id)
-		if (child) {
-			log.debug "device ${device.id} found, updating status..."
-			child.updateStatus(device.status)
+	def child = getChildDevice(id)
+	if (!child) {
+		return
+	}
+
+	def status = body.status
+	if (status) {
+		log.debug "updating status for device ${id}"
+		child.updateStatus(status)
+		return
+	}
+
+	def error = body.error
+	if (error) {
+		log.debug "sending error to device ${id}"
+		child.notifyError(error)
+
+		if (error == "No carafe" && notifyOnCarafeNotReady) {
+			sendPush('Unable to brew coffee... Carafe not ready.')
 		}
+		return
 	}
 }
 

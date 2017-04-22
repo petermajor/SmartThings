@@ -3,7 +3,8 @@
  *
  *  Copyright 2017 Peter Major
  *
- *  Version 1.0.0   17 Apr 2017		Initial Release
+ *  Version 1.0.0   17 Apr 2017		Initial release
+ *  Version 1.1.0   22 Apr 2017		Notify user when start brew fails
  *
  *	Version History
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -28,9 +29,6 @@ metadata {
 		command "changeStrength"
 		command "changeGrind"
 		command "changeHotplate"
-	}
-
-	preferences {
 	}
 
 	tiles(scale: 2) {
@@ -262,6 +260,14 @@ void updateStatus(status) {
 	sendEvent(name: "isHotplate", value: status.isHotplateOn.toString())
 	sendEvent(name: "waterLevel", value: status.waterLevel.toString())
 	sendEvent(name: "isCarafeDetected", value: status.isCarafeDetected.toString())
+}
+
+void notifyError(error) {
+
+	log.debug "notifyError ${error}"
+
+	def action = getStatus()
+	sendHubCommand(action)
 }
 
 def doSubscribe() {
