@@ -5,7 +5,7 @@
  *
  *  Version 1.0.0   17 Apr 2017		Initial Release
  *  Version 1.1.0   22 Apr 2017		Notify user when start brew fails
- *  Version 1.1.1   29 Apr 2017		Update all device info on rediscover
+ *  Version 1.1.1   29 Apr 2017		Update device on rediscovery
  *
  *	Version History
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -213,22 +213,22 @@ void discoverDevicesCallback(physicalgraph.device.HubResponse hubResponse) {
 	body.values().each {
 		def id = it.id
 
-		it.serverMac = serverMac
-		it.serverAddress = serverAddress
-		it.serverPort = serverPort
-		it.hubId = hubId
-		
-		if (devices["$id"]) {
-			devices["$id"] = it
- 			def child = getChildDevice(id)
-			if (child) {
- 				log.debug "device known $id, syncing..."
-				child.sync(it.serverAddress, it.serverPort, it.serverMac, it.id)
-			}
+		def device = [
+			id: id,
+			serverMac: serverMac,
+			serverAddress: serverAddress,
+			serverPort: serverPort,
+			hubId: hubId,
+			name: it.name,
+			mac: it.mac, 
+			ip: it.ip]
 
-		} else {
- 			log.debug "device not known $id, adding..."
-			devices << ["$id" : it]
+		devices["$id"] = device
+
+		def child = getChildDevice(id)
+		if (child) {
+			log.debug "device known $id, syncing..."
+			child.sync(device.serverAddress, device.serverPort, device.serverMac, device.id)
 		}
 	}
 
