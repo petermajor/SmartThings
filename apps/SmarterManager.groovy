@@ -5,6 +5,7 @@
  *
  *  Version 1.0.0   17 Apr 2017		Initial Release
  *  Version 1.1.0   22 Apr 2017		Notify user when start brew fails
+ *  Version 1.1.1   29 Apr 2017		Update all device info on rediscover
  *
  *	Version History
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -218,6 +219,7 @@ void discoverDevicesCallback(physicalgraph.device.HubResponse hubResponse) {
 		it.hubId = hubId
 		
 		if (devices["$id"]) {
+			devices["$id"] = it
  			def child = getChildDevice(id)
 			if (child) {
  				log.debug "device known $id, syncing..."
